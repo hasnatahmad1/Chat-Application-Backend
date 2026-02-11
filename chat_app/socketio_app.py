@@ -159,6 +159,8 @@ async def connect(sid, environ):
     # Join private user room
     user_room = f'user_{user.id}'
     await sio.enter_room(sid, user_room)
+    print(
+        f"[SOCKET] ✅ User {user.username} (ID: {user.id}) joined private room: {user_room}")
     logger.info(f"User {user.username} joined private room {user_room}")
 
     # Get all online users and send to client
@@ -174,6 +176,7 @@ async def connect(sid, environ):
     })
 
     logger.info(f"Client connected: {sid} (User: {user.username})")
+    print(f"[SOCKET] 🔗 SID {sid} fully connected for User: {user.username}")
     return True
 
 
@@ -181,7 +184,7 @@ async def connect(sid, environ):
 async def disconnect(sid):
     """Handle client disconnection"""
     try:
-        logger.info(f"🔌 SID {sid} disconnected")
+        print(f"[SOCKET] 🔌 SID {sid} disconnected")
         async with sio.session(sid) as session:
             user_id = session.get('user_id')
             username = session.get('username')
@@ -428,17 +431,14 @@ async def send_direct_message(sid, data):
             logger.info(f"✅ User {u_id} auto-joined room {room}")
 
         # Broadcast to conversation room
-        print(f"\n[SOCKET] 📤 Emitting direct_message to room: {room}")
+        logger.info(f"📤 Emitting direct_message to conversation room: {room}")
         await sio.emit('direct_message', message_data, room=room)
 
         # ALSO emit to receiver's private room
         receiver_room = f'user_{r_id}'
-        print(f"[SOCKET] 📤 ALSO Emitting to private room: {receiver_room}")
+        logger.info(
+            f"📤 ALSO Emitting direct_message to receiver private room: {receiver_room}")
         await sio.emit('direct_message', message_data, room=receiver_room)
-
-        # SANITY CHECK: Emit to everyone (no room)
-        print(f"[SOCKET] 📢 BROADCASTING to everyone just in case")
-        await sio.emit('direct_message', message_data)
 
         logger.info(f"Direct message sent: {username} -> User {receiver_id}")
 
@@ -473,3 +473,33 @@ async def typing(sid, data):
 
     except Exception as e:
         logger.error(f"Error handling typing: {e}")
+
+
+@sio.on('new_group')
+async def handle_new_group(sid, data):
+    """Notify members about a newly created group"""
+    try:
+        print(f"\n[SOCKET] 📥 Received 'new_group' event payload: {data}")
+        group_data = data.get('group')
+        member_ids = data.get('member_ids', [])
+
+        if not group_data or not member_ids:
+            print(f"[SOCKET] ⚠️ Invalid new_group data received: {data}")
+            return
+
+        g_id = group_data.get('id')
+        print(
+            f"[SOCKET] 📢 Notifying {len(member_ids)} members about group ID {g_id}")
+
+        for user_id in member_ids:
+            user_room = f'user_{user_id}'
+            print(
+                f"[SOCKET] 📤 Emitting 'group_created' to personal room: {user_room}")
+            await sio.emit('group_created', group_data, room=user_room)
+
+        # Confirm to sender
+        await sio.emit('new_group_confirmed', {'status': 'ok', 'group_id': g_id}, room=sid)
+
+    except Exception as e:
+        print(f"[SOCKET] ❌ CRITICAL Error in handle_new_group: {e}")
+        logger.error(f"Error in handle_new_group通知: {e}")
