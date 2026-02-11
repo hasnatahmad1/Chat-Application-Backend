@@ -159,8 +159,6 @@ async def connect(sid, environ):
     # Join private user room
     user_room = f'user_{user.id}'
     await sio.enter_room(sid, user_room)
-    print(
-        f"[SOCKET] ✅ User {user.username} (ID: {user.id}) joined private room: {user_room}")
     logger.info(f"User {user.username} joined private room {user_room}")
 
     # Get all online users and send to client
@@ -176,7 +174,6 @@ async def connect(sid, environ):
     })
 
     logger.info(f"Client connected: {sid} (User: {user.username})")
-    print(f"[SOCKET] 🔗 SID {sid} fully connected for User: {user.username}")
     return True
 
 
@@ -184,7 +181,7 @@ async def connect(sid, environ):
 async def disconnect(sid):
     """Handle client disconnection"""
     try:
-        print(f"[SOCKET] 🔌 SID {sid} disconnected")
+        logger.info(f"🔌 SID {sid} disconnected")
         async with sio.session(sid) as session:
             user_id = session.get('user_id')
             username = session.get('username')
@@ -479,27 +476,21 @@ async def typing(sid, data):
 async def handle_new_group(sid, data):
     """Notify members about a newly created group"""
     try:
-        print(f"\n[SOCKET] 📥 Received 'new_group' event payload: {data}")
         group_data = data.get('group')
         member_ids = data.get('member_ids', [])
 
         if not group_data or not member_ids:
-            print(f"[SOCKET] ⚠️ Invalid new_group data received: {data}")
             return
 
-        g_id = group_data.get('id')
-        print(
-            f"[SOCKET] 📢 Notifying {len(member_ids)} members about group ID {g_id}")
+        logger.info(
+            f"📢 Notifying {len(member_ids)} members about new group {group_data.get('id')}")
 
         for user_id in member_ids:
             user_room = f'user_{user_id}'
-            print(
-                f"[SOCKET] 📤 Emitting 'group_created' to personal room: {user_room}")
             await sio.emit('group_created', group_data, room=user_room)
 
         # Confirm to sender
-        await sio.emit('new_group_confirmed', {'status': 'ok', 'group_id': g_id}, room=sid)
+        await sio.emit('new_group_confirmed', {'status': 'ok', 'group_id': group_data.get('id')}, room=sid)
 
     except Exception as e:
-        print(f"[SOCKET] ❌ CRITICAL Error in handle_new_group: {e}")
-        logger.error(f"Error in handle_new_group通知: {e}")
+        logger.error(f"Error in handle_new_group: {e}")
