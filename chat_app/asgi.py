@@ -3,7 +3,7 @@ ASGI config for chat_app project.
 It exposes the ASGI callable as a module-level variable named ``application``.
 """
 
-from chat.routing import websocket_urlpatterns
+# from chat.routing import websocket_urlpatterns
 from rest_framework_simplejwt.tokens import AccessToken
 from django.contrib.auth.models import AnonymousUser
 from channels.db import database_sync_to_async
@@ -69,7 +69,7 @@ application = ProtocolTypeRouter({
     "websocket": AllowedHostsOriginValidator(
         TokenAuthMiddleware(
             URLRouter(
-                websocket_urlpatterns
+                # websocket_urlpatterns
             )
         )
     ),
