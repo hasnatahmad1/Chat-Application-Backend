@@ -148,6 +148,8 @@ CORS_ALLOWED_ORIGINS = [
 
 CORS_ALLOW_CREDENTIALS = True
 
+CORS_ALLOWED_ALL_ORIGINS = True
+
 # Channel Layers for WebSocket
 # CHANNEL_LAYERS = {
 #     'default': {
